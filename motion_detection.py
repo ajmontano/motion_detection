@@ -29,13 +29,19 @@ image_frame.grid(row=0, column=0, padx=10, pady=10)
 label_main = tk.Label(root)
 label_main.grid(row=0, column=0)
 
+# Create a background subtractor
+background_subtractor = cv2.createBackgroundSubtractorMOG2()
+
 
 def show_frame():
     # Capture frame-by-frame
     ret_val, frame = cap.read()
 
-    # Convert the frame into an ImageTk
-    cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+    # Create the foreground mask
+    foreground_mask = background_subtractor.apply(frame)
+
+    # Convert the foreground masked frame into an ImageTk
+    cv2image = cv2.cvtColor(foreground_mask, cv2.COLOR_BGR2RGBA)
     img = Image.fromarray(cv2image)
     image_tk = ImageTk.PhotoImage(image=img)
 
