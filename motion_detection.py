@@ -2,58 +2,70 @@ import numpy as np
 import tkinter as tk
 from PIL import Image, ImageTk
 import cv2
-
-# Define the dimensions, in pixels, of a full screen
-width = 1920
-height = 1080
-
-# Define the focus level of the camera
-focus = 0
-
-# Define the wait to display the next frame
-frame_wait_ms = 1000
-
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
-# Change the focus
-cap.set(cv2.CAP_PROP_FOCUS, focus)
-
-root = tk.Tk()
-
-# Setup the image frame
-image_frame = tk.Frame(root, width=width, height=height)
-image_frame.grid(row=0, column=0, padx=10, pady=10)
-
-label_main = tk.Label(root)
-label_main.grid(row=0, column=0)
-
-# Create a background subtractor
-background_subtractor = cv2.createBackgroundSubtractorMOG2()
+import argparse
 
 
-def show_frame():
-    # Capture frame-by-frame
-    ret_val, frame = cap.read()
+def parse_commandline():
+    parser = argparse.ArgumentParser(description='Motion detection app')
+    parser.add_argument('--wait-ms', type=int, default=10, help='The wait time to display frames in milliseconds')
+    parser.add_argument('--image-width', type=int, default=1920, help='The width of the capture in pixels')
+    parser.add_argument('--image-height', type=int, default=1080, help='The height of the capture in pixels')
+    parser.add_argument('--focus', type=int, default=0, help='The focus value of the capture')
 
-    # Create the foreground mask
-    foreground_mask = background_subtractor.apply(frame)
+    return parser.parse_args()
 
-    # Convert the foreground masked frame into an ImageTk
-    cv2image = cv2.cvtColor(foreground_mask, cv2.COLOR_BGR2RGBA)
-    img = Image.fromarray(cv2image)
-    image_tk = ImageTk.PhotoImage(image=img)
 
+def setup_capture(args):
+    # Define the dimensions, in pixels, of a full screen
+    width = args.image_width
+    height = args.image_height
+
+    # Define the focus level of the camera
+    focus = args.focus
+
+    # Define the wait to display the next frame
+    frame_wait_ms = args.wait_ms
+
+    # Create the capture object
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+    # Change the focus
+    cap.set(cv2.CAP_PROP_FOCUS, focus)
+
+    # Create a background subtractor
+    background_subtractor = cv2.createBackgroundSubtractorMOG2()
+
+    return cap, background_subtractor
+
+
+def show_frame(cap, background_subtractor):
     # Display the window
-    label_main.imgtk = image_tk
-    label_main.configure(image=image_tk)
-    label_main.after(frame_wait_ms, show_frame)
+    while True:
+        # Capture frame-by-frame
+        ret_val, frame = cap.read()
+
+        # Create the foreground mask
+        foreground_mask = background_subtractor.apply(frame)
+
+        # TODO: Figure out how to control the frames display ("framerate")
+        cv2.imshow('Foreground Masked View', foreground_mask)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # When finished, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
 
 
-# Run the display loop
-show_frame()
-root.mainloop()
+def main():
+    args = parse_commandline()
+    cap, background_subtractor = setup_capture(args)
 
-# When finished, release the capture
-cap.release()
+    # Run the display loop
+    show_frame(cap, background_subtractor)
+
+
+if __name__ == '__main__':
+    main()
