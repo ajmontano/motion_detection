@@ -42,15 +42,34 @@ def setup_capture(args):
 
 def show_frame(cap, background_subtractor):
     # Display the window
+    previous_frame = None
     while True:
         # Capture frame-by-frame
         ret_val, frame = cap.read()
 
-        # Create the foreground mask
-        foreground_mask = background_subtractor.apply(frame)
+        if previous_frame is None:
+            previous_frame = frame
+            continue
+
+        # # Get the greyscale version of the image and blur it
+        # prepared_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # prepared_frame = cv2.GaussianBlur(src=prepared_frame, ksize=(5, 5), sigmaX=0)
+
+        # Create the foreground masks
+        foreground_mask_current = background_subtractor.apply(frame)
+        foreground_mask_previous = background_subtractor.apply(previous_frame)
+
+        # Subtract the previous masked frame and the current then set the previous frame
+        pixel_difference_frame = cv2.absdiff(src1=foreground_mask_previous, src2=foreground_mask_current)
+        previous_frame = frame
+
+        # Dilate and filter the result based on a threshold value
+        kernel = np.ones((5, 5))
+        pixel_difference_frame = cv2.dilate(pixel_difference_frame, kernel, 1)
+        threshold_frame = cv2.threshold(src=pixel_difference_frame, thresh=20, maxval=255, type=cv2.THRESH_BINARY)[1]
 
         # TODO: Figure out how to control the frames display ("framerate")
-        cv2.imshow('Foreground Masked View', foreground_mask)
+        cv2.imshow('Foreground Masked & Diff View', threshold_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
