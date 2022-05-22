@@ -1,13 +1,12 @@
 import numpy as np
-import tkinter as tk
-from PIL import Image, ImageTk
+import time
 import cv2
 import argparse
 
 
 def parse_commandline():
     parser = argparse.ArgumentParser(description='Motion detection app')
-    parser.add_argument('--wait-ms', type=int, default=10, help='The wait time to display frames in milliseconds')
+    parser.add_argument('--wait-ms', type=int, default=0, help='The wait time to display frames in milliseconds')
     parser.add_argument('--image-width', type=int, default=1920, help='The width of the capture in pixels')
     parser.add_argument('--image-height', type=int, default=1080, help='The height of the capture in pixels')
     parser.add_argument('--focus', type=int, default=0, help='The focus value of the capture')
@@ -40,7 +39,7 @@ def setup_capture(args):
     return cap, background_subtractor
 
 
-def show_frame(cap, background_subtractor):
+def show_frame(cap, background_subtractor, wait_ms):
     # Display the window
     previous_frame = None
     while True:
@@ -73,6 +72,9 @@ def show_frame(cap, background_subtractor):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+        # Wait to display the next frame
+        time.sleep(wait_ms / 1000)
+
     # When finished, release the capture
     cap.release()
     cv2.destroyAllWindows()
@@ -83,7 +85,7 @@ def main():
     cap, background_subtractor = setup_capture(args)
 
     # Run the display loop
-    show_frame(cap, background_subtractor)
+    show_frame(cap, background_subtractor, args.wait_ms)
 
 
 if __name__ == '__main__':
