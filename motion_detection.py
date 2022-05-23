@@ -34,6 +34,7 @@ def setup_capture(args):
     cap.set(cv2.CAP_PROP_FOCUS, focus)
 
     # Create a background subtractor
+    # TODO: Look into if this can keep track of static objects as well
     background_subtractor = cv2.createBackgroundSubtractorMOG2()
 
     return cap, background_subtractor
@@ -41,34 +42,28 @@ def setup_capture(args):
 
 def show_frame(cap, background_subtractor, wait_ms):
     # Display the window
-    previous_frame = None
     while True:
         # Capture frame-by-frame
         ret_val, frame = cap.read()
 
-        if previous_frame is None:
-            previous_frame = frame
-            continue
-
-        # Create the foreground masks
-        foreground_mask_current = background_subtractor.apply(frame)
-        foreground_mask_previous = background_subtractor.apply(previous_frame)
+        # Create the foreground mask
+        foreground_mask = background_subtractor.apply(frame)
 
         # Blur the images to reduce noise
-        foreground_mask_current = cv2.GaussianBlur(src=foreground_mask_current, ksize=(5, 5), sigmaX=0)
-        foreground_mask_previous = cv2.GaussianBlur(src=foreground_mask_previous, ksize=(5, 5), sigmaX=0)
-
-        # Subtract the previous masked frame and the current then set the previous frame
-        pixel_difference_frame = cv2.absdiff(src1=foreground_mask_previous, src2=foreground_mask_current)
-        previous_frame = frame
+        foreground_mask = cv2.GaussianBlur(src=foreground_mask, ksize=(5, 5), sigmaX=0)
 
         # Dilate and filter the result based on a threshold value
         kernel = np.ones((5, 5))
-        pixel_difference_frame = cv2.dilate(pixel_difference_frame, kernel, 1)
-        threshold_frame = cv2.threshold(src=pixel_difference_frame, thresh=200, maxval=255, type=cv2.THRESH_BINARY)[1]
+        foreground_mask= cv2.dilate(foreground_mask, kernel, 1)
+        threshold_frame = cv2.threshold(src=foreground_mask, thresh=200, maxval=255, type=cv2.THRESH_BINARY)[1]
+
+        # Find the contours of the image
+        contours, _ = cv2.findContours(image=threshold_frame, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(image=frame, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
+                         lineType=cv2.LINE_AA)
 
         cv2.imshow('Foreground Masked & Diff View', threshold_frame)
-        cv2.imshow('Raw Image', frame)
+        cv2.imshow('Contour Image', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
